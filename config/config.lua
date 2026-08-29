@@ -17,7 +17,7 @@ Config.General = {
     updatedinventoryammo = true, -- use if using updated inventory with new ammo system
 
 
-    jobonly = true, -- only players with mentioned jobs below can access crafting/customization station
+    jobonly = false, -- only players with mentioned jobs below can access crafting/customization station
 
     job = { "gunsmith", "rguns" },
 

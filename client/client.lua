@@ -92,7 +92,7 @@ local function playanim(anim, msg)
 	ClearPedTasksImmediately(PlayerPedId())
 end
 local function whenKeyJustPressed(key)
-	if Citizen.InvokeNative(0x580417101DDB492F, 0, key) then
+	if Citizen.InvokeNative(0x580417101DDB492F, 0, key) or Citizen.InvokeNative(0x91AEF906BCA88877, 0, key) then
 		return true
 	else
 		return false
