@@ -38,18 +38,12 @@ Config.General = {
             Pos = { x = -277.22, y = 778.922, z = 119.50 },  -- location weapon customization station
             Pos2 = { x = -276.47, y = 778.922, z = 119.80 }, -- location spawned weapon 3d model
         },
-        Rhodes = {
-            Pos = { x = 1327.09, y = -1321.91, z = 77.88 },  -- location weapon customization station
-            Pos2 = { x = 1326.09, y = -1321.91, z = 78.28 }, -- location spawned weapon 3d model
-        },
+
     },
 
     craftinglocation = {
         Valentine = {
             Pos = { x = -277.0, y = 780.689, z = 119.68 }, -- location weapon crafting station
-        },
-        Rhodes = {
-            Pos = { x = 1329.68, y = -1320.9, z = 77.88 }, -- location weapon crafting station
         },
     },
 
