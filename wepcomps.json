@@ -27943,14 +27943,6 @@
       "model": 0,
       "name": -1234421313
     },
-    {
-      "label": "Wrap Cloth",
-      "model": -135977067,
-      "comp": "comp",
-      "type": "wrap",
-      "confirmed": 1,
-      "name": 1958362959
-  },
   {
     "label": "Short Scope",
     "model": -111300354,
@@ -27975,15 +27967,32 @@
     "confirmed": 1,
     "name": -1545766277
   },
+
+   {
+      "label": "Wrap 1",
+      "model": -135977067,
+      "comp": "comp",
+      "type": "wrap",
+      "confirmed": 1,
+      "name": 1958362959
+  },
   
     {
-      "label": "Wrap",
+      "label": "Wrap 2",
       "model": 184307139,
       "comp": "comp",
         "type": "wrap",
         "confirmed": 1,
       "name": -1649438395
     },
+   {
+  "label": "Wrap 3",
+  "model": -442072296,
+  "comp": "comp",
+  "type": "wrap",
+  "confirmed": 1,
+  "name": -1055238118
+},
     {
       "label": "Silver",
       "model": 0,
@@ -29092,6 +29101,7 @@
       "confirmed": 1,
       "name": -1021999895
     }
+ 
 
   ],
   "WEAPON_MELEE_MACHETE": [],
