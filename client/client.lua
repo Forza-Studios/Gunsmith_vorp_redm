@@ -24,7 +24,33 @@ local OpenStores
 local blip
 local OpenGroup = GetRandomIntInRange(0, 0xffffff)
 
-local progressbar = exports.vorp_progressbar:initiate()
+local progressbar
+if GetResourceState('cas-progressbar') == 'started' then
+	progressbar = {
+		start = function(message, milliseconds, cb)
+			exports['cas-progressbar']:Progress({
+				name = "gunsmith_action",
+				duration = milliseconds,
+				label = message,
+				useWhileDead = false,
+				canCancel = false,
+				controlDisables = {
+					disableMovement = true,
+					disableCarMovement = true,
+					disableMouse = false,
+					disableCombat = true,
+				}
+			}, function(cancelled)
+				if not cancelled and cb then
+					cb()
+				end
+			end)
+		end
+	}
+else
+	progressbar = exports.vorp_progressbar:initiate()
+end
+
 local Core = exports.vorp_core:GetCore()
 
 local function RemoveWeaponComponentFromPed(ped, componentHash, weaponHash)
