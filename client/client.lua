@@ -628,6 +628,10 @@ CreateThread(function()
 									TriggerEvent("vorp:TipBottom", Config.Language.tooclose, 4000)
 								else
 									if weaponid == nil then
+										TriggerServerEvent("coi_gunsmith:server:requestActiveWeapon")
+										Citizen.Wait(500)
+									end
+									if weaponid == nil then
 										TriggerEvent("vorp:TipBottom", Config.Language.pleaserequip, 4000)
 									else
 										local ped = PlayerPedId()
@@ -656,6 +660,10 @@ CreateThread(function()
 							if closestPlayer ~= -1 and closestDistance <= 2.0 then
 								TriggerEvent("vorp:TipBottom", Config.Language.tooclose, 4000)
 							else
+								if weaponid == nil then
+									TriggerServerEvent("coi_gunsmith:server:requestActiveWeapon")
+									Citizen.Wait(500)
+								end
 								if weaponid == nil then
 									TriggerEvent("vorp:TipBottom", Config.Language.pleaserequip, 4000)
 								else
