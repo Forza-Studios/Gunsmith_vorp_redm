@@ -26,6 +26,81 @@ local next = next
 local OpenStores
 local blips = {}
 
+local currentFocusedComponent = nil
+local lastFocusedComponent = nil
+
+local function RebuildWeaponPreview(tempComponent)
+	if not wepobject or not DoesEntityExist(wepobject) then return end
+
+	-- Remove all component models from the weapon object
+	for k, v in pairs(compss) do
+		RemoveWeaponComponentFromWeaponObject(wepobject, v.name)
+	end
+
+	-- Re-apply all components from `added` (confirmed selections)
+	for i = 1, #added do
+		if added[i].model ~= 0 then
+			LoadModel(added[i].model)
+		end
+		GiveWeaponComponentToEntity(wepobject, added[i].name, -1, true)
+		if added[i].model ~= 0 then
+			SetModelAsNoLongerNeeded(added[i].model)
+		end
+	end
+
+	-- If there is a temporary focused component, apply it (overriding the saved one)
+	if tempComponent then
+		-- First, remove any component from wepobject of the same category (comp and type)
+		for k, v in pairs(compss) do
+			if v.comp == tempComponent.comp and (tempComponent.type == nil or v.type == tempComponent.type) then
+				RemoveWeaponComponentFromWeaponObject(wepobject, v.name)
+			end
+		end
+		-- Apply the temporary focused component
+		if tempComponent.model ~= 0 then
+			LoadModel(tempComponent.model)
+		end
+		GiveWeaponComponentToEntity(wepobject, tempComponent.name, -1, true)
+		if tempComponent.model ~= 0 then
+			SetModelAsNoLongerNeeded(tempComponent.model)
+		end
+	end
+end
+
+local original_Button = WarMenu.Button
+function WarMenu.Button(text, subText)
+	local pressed, focused = original_Button(text, subText)
+	if focused then
+		for i = 1, #compss do
+			if compss[i].price and compss[i].label then
+				local compText = Config.Language.label .. tostring(compss[i].label) .. Config.Language.price .. tostring(compss[i].price) .. Config.Language.dollar
+				if text == compText then
+					currentFocusedComponent = compss[i]
+					break
+				end
+			end
+		end
+	end
+	return pressed
+end
+
+local original_MenuButton = WarMenu.MenuButton
+function WarMenu.MenuButton(text, id)
+	local pressed, focused = original_MenuButton(text, id)
+	if focused then
+		for i = 1, #compss do
+			if compss[i].price and compss[i].label then
+				local compText = Config.Language.label .. tostring(compss[i].label) .. Config.Language.price .. tostring(compss[i].price) .. Config.Language.dollar
+				if text == compText then
+					currentFocusedComponent = compss[i]
+					break
+				end
+			end
+		end
+	end
+	return pressed
+end
+
 local function createBlips()
 	for _, b in ipairs(blips) do
 		RemoveBlip(b)
@@ -721,6 +796,7 @@ CreateThread(function()
 	WarMenu.CreateSubMenu('confirmbuy', 'wepcomp', Config.Language.buyselect)
 	local GetJob = false
 	while true do
+		currentFocusedComponent = nil
 		if WarMenu.IsMenuOpened('wepcomp') then
 			if cal == true then
 				sum = 0
@@ -2702,6 +2778,10 @@ CreateThread(function()
 			end
 		end
 		WarMenu.Display()
+		if currentFocusedComponent ~= lastFocusedComponent then
+			RebuildWeaponPreview(currentFocusedComponent)
+			lastFocusedComponent = currentFocusedComponent
+		end
 		Wait(0)
 	end
 end)

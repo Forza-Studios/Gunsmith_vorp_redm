@@ -320,34 +320,37 @@ function WarMenu.Button(text, subText)
 			if currentKey == keys.select then
 				PlaySoundFrontend(-1, menus[currentMenu].buttonPressedSound.name, menus[currentMenu].buttonPressedSound.set, true)
 				debugPrint(buttonText..' button pressed')
-				return true
+				return true, true
 			elseif currentKey == keys.left or currentKey == keys.right then
 				PlaySoundFrontend(-1, "NAV_UP_DOWN", "HUD_FRONTEND_DEFAULT_SOUNDSET", true)
 			end
+			return false, true
 		end
 
-		return false
+		return false, false
 	else
 		debugPrint('Failed to create '..buttonText..' button: '..tostring(currentMenu)..' menu doesn\'t exist')
 
-		return false
+		return false, false
 	end
 end
 
 
 function WarMenu.MenuButton(text, id)
 	if menus[id] then
-		if WarMenu.Button(text) then
+		local pressed, focused = WarMenu.Button(text)
+		if pressed then
 			setMenuVisible(currentMenu, false)
 			setMenuVisible(id, true, true)
 
-			return true
+			return true, focused
 		end
+		return false, focused
 	else
 		debugPrint('Failed to create '..tostring(text)..' menu button: '..tostring(id)..' submenu doesn\'t exist')
 	end
 
-	return false
+	return false, false
 end
 
 
