@@ -675,52 +675,17 @@ CreateThread(function()
 			for k, v in pairs(Config.General.customizationLocations) do
 				local dist = GetDistanceBetweenCoords(coords.x, coords.y, coords.z, v.Pos.x, v.Pos.y, v.Pos.z, true)
 
-				if dist < 15.0 then
+				if dist < 1 then
 					sleep = 0
-					DrawText3D(v.Pos.x, v.Pos.y, v.Pos.z + 1.0, "Weapon Customization")
-					if dist < 1 then
-						local Label = VarString(10, 'LITERAL_STRING', Config.Language.presstobuy)
-						UiPromptSetActiveGroupThisFrame(OpenGroup, Label, 0, 0, 0, 0)
+					local Label = VarString(10, 'LITERAL_STRING', Config.Language.presstobuy)
+					UiPromptSetActiveGroupThisFrame(OpenGroup, Label, 0, 0, 0, 0)
 
-						if Citizen.InvokeNative(0xC92AC953F0A982AE, OpenStores) then
-							if Config.General.jobonly then
-								local result = Core.Callback.TriggerAwait("vorp_weapons:getjob")
-								local playerjob = result[1]
-								local playerrank = result[2]
-								if jobcheck(Config.General.job, playerjob) and tonumber(playerrank) >= Config.General.jobrankcustomization then
-									local closestPlayer, closestDistance, playerid, tgt1 = GetClosestPlayer()
-									if closestPlayer ~= -1 and closestDistance <= 2.0 then
-										TriggerEvent("vorp:TipBottom", Config.Language.tooclose, 4000)
-									else
-										if weaponid == nil then
-											TriggerServerEvent("coi_gunsmith:server:requestActiveWeapon")
-											Citizen.Wait(500)
-										end
-										if weaponid == nil then
-											TriggerEvent("vorp:TipBottom", Config.Language.pleaserequip, 4000)
-										else
-											local ped = PlayerPedId()
-											_, wepHash = GetCurrentPedWeapon(ped, true, 0, true)
-											wep = GetCurrentPedWeaponEntityIndex(ped, 0)
-											if globalhash ~= wepHash then
-												TriggerEvent("vorp:TipBottom", Config.Language.pleaserequip, 4000)
-											else
-												if wep ~= nil and wep ~= 0 and globalhash ~= nil then
-													TriggerEvent("vorp_weapons:wepcomp")
-													Citizen.Wait(1000)
-													WarMenu.OpenMenu('wepcomp')
-													TaskStandStill(ped, -1)
-													createobject(v.Pos2.x, v.Pos2.y, v.Pos2.z, globalhash)
-												else
-													TriggerEvent("vorp:TipBottom", Config.Language.pleaserequip, 4000)
-												end
-											end
-										end
-									end
-								else
-									TriggerEvent("vorp:TipBottom", Config.Language.wrongjobcuztom, 4000)
-								end
-							else
+					if Citizen.InvokeNative(0xC92AC953F0A982AE, OpenStores) then
+						if Config.General.jobonly then
+							local result = Core.Callback.TriggerAwait("vorp_weapons:getjob")
+							local playerjob = result[1]
+							local playerrank = result[2]
+							if jobcheck(Config.General.job, playerjob) and tonumber(playerrank) >= Config.General.jobrankcustomization then
 								local closestPlayer, closestDistance, playerid, tgt1 = GetClosestPlayer()
 								if closestPlayer ~= -1 and closestDistance <= 2.0 then
 									TriggerEvent("vorp:TipBottom", Config.Language.tooclose, 4000)
@@ -742,10 +707,42 @@ CreateThread(function()
 												TriggerEvent("vorp_weapons:wepcomp")
 												Citizen.Wait(1000)
 												WarMenu.OpenMenu('wepcomp')
+												TaskStandStill(ped, -1)
 												createobject(v.Pos2.x, v.Pos2.y, v.Pos2.z, globalhash)
 											else
 												TriggerEvent("vorp:TipBottom", Config.Language.pleaserequip, 4000)
 											end
+										end
+									end
+								end
+							else
+								TriggerEvent("vorp:TipBottom", Config.Language.wrongjobcuztom, 4000)
+							end
+						else
+							local closestPlayer, closestDistance, playerid, tgt1 = GetClosestPlayer()
+							if closestPlayer ~= -1 and closestDistance <= 2.0 then
+								TriggerEvent("vorp:TipBottom", Config.Language.tooclose, 4000)
+							else
+								if weaponid == nil then
+									TriggerServerEvent("coi_gunsmith:server:requestActiveWeapon")
+									Citizen.Wait(500)
+								end
+								if weaponid == nil then
+									TriggerEvent("vorp:TipBottom", Config.Language.pleaserequip, 4000)
+								else
+									local ped = PlayerPedId()
+									_, wepHash = GetCurrentPedWeapon(ped, true, 0, true)
+									wep = GetCurrentPedWeaponEntityIndex(ped, 0)
+									if globalhash ~= wepHash then
+										TriggerEvent("vorp:TipBottom", Config.Language.pleaserequip, 4000)
+									else
+										if wep ~= nil and wep ~= 0 and globalhash ~= nil then
+											TriggerEvent("vorp_weapons:wepcomp")
+											Citizen.Wait(1000)
+											WarMenu.OpenMenu('wepcomp')
+											createobject(v.Pos2.x, v.Pos2.y, v.Pos2.z, globalhash)
+										else
+											TriggerEvent("vorp:TipBottom", Config.Language.pleaserequip, 4000)
 										end
 									end
 								end
@@ -771,28 +768,25 @@ CreateThread(function()
 
 			for k, v in pairs(Config.General.craftinglocation) do
 				local dist = GetDistanceBetweenCoords(coords.x, coords.y, coords.z, v.Pos.x, v.Pos.y, v.Pos.z, false)
-				if dist < 15.0 then
+				if dist < 1 then
 					letSleep    = 0
-					DrawText3D(v.Pos.x, v.Pos.y, v.Pos.z + 1.0, "Craft Bench")
-					if dist < 1 then
-						local Label = VarString(10, 'LITERAL_STRING', Config.Language.presstocraft)
-						UiPromptSetActiveGroupThisFrame(OpenGroup, Label, 0, 0, 0, 0)
+					local Label = VarString(10, 'LITERAL_STRING', Config.Language.presstocraft)
+					UiPromptSetActiveGroupThisFrame(OpenGroup, Label, 0, 0, 0, 0)
 
-						if Citizen.InvokeNative(0xC92AC953F0A982AE, OpenStores) then
-							if Config.General.jobonly then
-								local result = Core.Callback.TriggerAwait("vorp_weapons:getjob")
-								local playerjob = result[1]
-								local playerrank = result[2]
-								if jobcheck(Config.General.job, playerjob) and tonumber(playerrank) >= Config.General.jobrankcrafting then
-									crafting = true
-									WarMenu.OpenMenu('crafting')
-								else
-									Core.NotifyObjective(Config.Language.wrongjobcrafting, 5000)
-								end
-							else
+					if Citizen.InvokeNative(0xC92AC953F0A982AE, OpenStores) then
+						if Config.General.jobonly then
+							local result = Core.Callback.TriggerAwait("vorp_weapons:getjob")
+							local playerjob = result[1]
+							local playerrank = result[2]
+							if jobcheck(Config.General.job, playerjob) and tonumber(playerrank) >= Config.General.jobrankcrafting then
 								crafting = true
 								WarMenu.OpenMenu('crafting')
+							else
+								Core.NotifyObjective(Config.Language.wrongjobcrafting, 5000)
 							end
+						else
+							crafting = true
+							WarMenu.OpenMenu('crafting')
 						end
 					end
 				end
