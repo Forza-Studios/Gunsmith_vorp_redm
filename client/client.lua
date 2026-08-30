@@ -50,6 +50,62 @@ local function LoadModel(model)
 	return true
 end
 
+local function getComponentPriority(item)
+	if not item then return 99 end
+	local comp = item.comp
+	local ctype = item.type
+	local model = item.model or 0
+
+	if comp == "variant" then
+		return 1
+	end
+
+	-- Base physical parts and attachments
+	if comp == "barrel" or comp == "frame" or comp == "cylinder" or comp == "trigger" or comp == "gripbody" or comp == "grip" or comp == "frontsight" then
+		if model ~= 0 then
+			return 2 -- Physical base model first
+		else
+			return 4 -- Material/color override for parts
+		end
+	end
+
+	if comp == "comp" then
+		if ctype == "wrap" or ctype == "scope" then
+			return 3 -- Wraps and scopes attach to the weapon body
+		else
+			return 2 -- Other modifications like rifling
+		end
+	end
+
+	if comp == "decal" then
+		return 5 -- Engravings/decals themselves
+	end
+
+	-- Color and engraving modifications must go last
+	if comp == "wrapcolor" or comp == "decalcolor" or comp == "scopecolor" then
+		return 6
+	end
+
+	-- Fallback
+	if model ~= 0 then
+		return 3
+	else
+		return 7
+	end
+end
+
+local function sortComponents(components)
+	if not components then return {} end
+	local sorted = {}
+	for i = 1, #components do
+		table.insert(sorted, components[i])
+	end
+	table.sort(sorted, function(a, b)
+		return getComponentPriority(a) < getComponentPriority(b)
+	end)
+	return sorted
+end
+
 local function RebuildWeaponPreview(tempComponent)
 	if not wepobject or not DoesEntityExist(wepobject) then return end
 
@@ -59,13 +115,14 @@ local function RebuildWeaponPreview(tempComponent)
 	end
 
 	-- Re-apply all components from `added` (confirmed selections)
-	for i = 1, #added do
-		if added[i].model ~= 0 then
-			LoadModel(added[i].model)
+	local sortedAdded = sortComponents(added)
+	for i = 1, #sortedAdded do
+		if sortedAdded[i].model ~= 0 then
+			LoadModel(sortedAdded[i].model)
 		end
-		GiveWeaponComponentToEntity(wepobject, added[i].name, -1, true)
-		if added[i].model ~= 0 then
-			SetModelAsNoLongerNeeded(added[i].model)
+		GiveWeaponComponentToEntity(wepobject, sortedAdded[i].name, -1, true)
+		if sortedAdded[i].model ~= 0 then
+			SetModelAsNoLongerNeeded(sortedAdded[i].model)
 		end
 	end
 
@@ -268,24 +325,26 @@ RegisterNetEvent("vorp_weapons:applymods")
 AddEventHandler("vorp_weapons:applymods", function()
 	makeEntityFaceEntity(wepobject)
 	playanim(Config.General.customizationanimation, Config.Language.customloading)
-	TriggerServerEvent("vorp_weapons:addcomp", weaponid, added)
+	local sortedAdded = sortComponents(added)
+	TriggerServerEvent("vorp_weapons:addcomp", weaponid, sortedAdded)
 	for k, v in pairs(compss) do
 		RemoveWeaponComponentFromPed(PlayerPedId(), v.name, globalhash)
 	end
-	for i = 1, #added do
-		if added[i].model ~= 0 then
-			LoadModel(added[i].model)
+	Wait(500)
+	for i = 1, #sortedAdded do
+		if sortedAdded[i].model ~= 0 then
+			LoadModel(sortedAdded[i].model)
 		end
-		GiveWeaponComponentToEntity(PlayerPedId(), added[i].name, globalhash, true)
-		if added[i].model ~= 0 then
-			SetModelAsNoLongerNeeded(added[i].model)
+		GiveWeaponComponentToEntity(PlayerPedId(), sortedAdded[i].name, globalhash, true)
+		if sortedAdded[i].model ~= 0 then
+			SetModelAsNoLongerNeeded(sortedAdded[i].model)
 		end
 	end
 	createdobject = false
 	FreezeEntityPosition(PlayerPedId(), false)
 	DeleteEntity(wepobject)
 
-	LocalPlayer.state:set("weaponComponents", { hash = globalhash, comps = added }, true)
+	LocalPlayer.state:set("weaponComponents", { hash = globalhash, comps = sortedAdded }, true)
 
 	added = {}
 	wephash = nil
@@ -2803,7 +2862,9 @@ end)
 RegisterNetEvent("vorp_weapons:givecomp", function(components, id, hash)
 	globalhash = hash
 	weaponid = id
-	added = components
+	components = components or {}
+	local sortedComps = sortComponents(components)
+	added = sortedComps
 	local ped = PlayerPedId()
 	wep = GetCurrentPedWeaponEntityIndex(ped, 0)
 	_, wepHash = GetCurrentPedWeapon(ped, true, 0, true)
@@ -2812,17 +2873,17 @@ RegisterNetEvent("vorp_weapons:givecomp", function(components, id, hash)
 		RemoveWeaponComponentFromPed(PlayerPedId(), v.name, globalhash)
 	end
 	Wait(500)
-	for i = 1, #components do
-		if components[i].model ~= 0 then
-			LoadModel(components[i].model)
+	for i = 1, #sortedComps do
+		if sortedComps[i].model ~= 0 then
+			LoadModel(sortedComps[i].model)
 		end
-		GiveWeaponComponentToEntity(PlayerPedId(), components[i].name, globalhash, true)
-		if components[i].model ~= 0 then
-			SetModelAsNoLongerNeeded(components[i].model)
+		GiveWeaponComponentToEntity(PlayerPedId(), sortedComps[i].name, globalhash, true)
+		if sortedComps[i].model ~= 0 then
+			SetModelAsNoLongerNeeded(sortedComps[i].model)
 		end
 	end
 
-	LocalPlayer.state:set("weaponComponents", { hash = globalhash, comps = added }, true)
+	LocalPlayer.state:set("weaponComponents", { hash = globalhash, comps = sortedComps }, true)
 end)
 
 RegisterNetEvent("coi_gunsmith:client:syncPreviewStart", function(ownerId, hash, coords, h, roll, components)
@@ -2851,15 +2912,17 @@ RegisterNetEvent("coi_gunsmith:client:syncPreviewUpdate", function(ownerId, h, r
 				for i = 1, #preview.appliedComponents do
 					RemoveWeaponComponentFromWeaponObject(preview.entity, preview.appliedComponents[i])
 				end
+				Wait(100) -- Small delay for engine to clear components
 				local applied = {}
-				for i = 1, #components do
-					if components[i].model ~= 0 then
-						LoadModel(components[i].model)
+				local sortedComps = sortComponents(components)
+				for i = 1, #sortedComps do
+					if sortedComps[i].model ~= 0 then
+						LoadModel(sortedComps[i].model)
 					end
-					GiveWeaponComponentToEntity(preview.entity, components[i].name, -1, true)
-					table.insert(applied, components[i].name)
-					if components[i].model ~= 0 then
-						SetModelAsNoLongerNeeded(components[i].model)
+					GiveWeaponComponentToEntity(preview.entity, sortedComps[i].name, -1, true)
+					table.insert(applied, sortedComps[i].name)
+					if sortedComps[i].model ~= 0 then
+						SetModelAsNoLongerNeeded(sortedComps[i].model)
 					end
 				end
 				preview.appliedComponents = applied
@@ -2900,14 +2963,15 @@ Citizen.CreateThread(function()
 					SetEntityRotation(entity, data.roll % 360, 0, data.h % 360, 1, true)
 					FreezeEntityPosition(entity, true)
 					local applied = {}
-					for i = 1, #data.components do
-						if data.components[i].model ~= 0 then
-							LoadModel(data.components[i].model)
+					local sortedComps = sortComponents(data.components)
+					for i = 1, #sortedComps do
+						if sortedComps[i].model ~= 0 then
+							LoadModel(sortedComps[i].model)
 						end
-						GiveWeaponComponentToEntity(entity, data.components[i].name, -1, true)
-						table.insert(applied, data.components[i].name)
-						if data.components[i].model ~= 0 then
-							SetModelAsNoLongerNeeded(data.components[i].model)
+						GiveWeaponComponentToEntity(entity, sortedComps[i].name, -1, true)
+						table.insert(applied, sortedComps[i].name)
+						if sortedComps[i].model ~= 0 then
+							SetModelAsNoLongerNeeded(sortedComps[i].model)
 						end
 					end
 					nearbyPreviews[ownerId] = {
@@ -2977,20 +3041,23 @@ Citizen.CreateThread(function()
 								end
 							end
 
+							Wait(500) -- Allow engine to process removals before applying new components
+
 							-- Apply the new components
-							for j = 1, #state.comps do
-								if state.comps[j].model ~= 0 then
-									LoadModel(state.comps[j].model)
+							local sortedComps = sortComponents(state.comps)
+							for j = 1, #sortedComps do
+								if sortedComps[j].model ~= 0 then
+									LoadModel(sortedComps[j].model)
 								end
-								GiveWeaponComponentToEntity(playerPed, state.comps[j].name, state.hash, true)
-								if state.comps[j].model ~= 0 then
-									SetModelAsNoLongerNeeded(state.comps[j].model)
+								GiveWeaponComponentToEntity(playerPed, sortedComps[j].name, state.hash, true)
+								if sortedComps[j].model ~= 0 then
+									SetModelAsNoLongerNeeded(sortedComps[j].model)
 								end
 							end
 
 							appliedOtherComponents[playerServerId] = {
 								hash = state.hash,
-								comps = copy_components(state.comps)
+								comps = copy_components(sortedComps)
 							}
 						end
 					else

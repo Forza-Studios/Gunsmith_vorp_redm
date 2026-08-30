@@ -268,10 +268,11 @@ RegisterServerEvent("coi_gunsmith:server:requestActiveWeapon", function()
     local Character = Core.getUser(_source).getUsedCharacter
     if Character then
         local charid = Character.charIdentifier
-        MySQL.query('SELECT id, hash, comps FROM loadout WHERE charidentifier = @charid AND used2 = 1', { charid = charid }, function(result)
+        MySQL.query('SELECT id, name, comps FROM loadout WHERE charidentifier = @charid AND used2 = 1', { charid = charid }, function(result)
             if result and result[1] then
                 local components = json.decode(result[1].comps) or {}
-                TriggerClientEvent("vorp_weapons:givecomp", _source, components, result[1].id, result[1].hash)
+                local weaponHash = GetHashKey(result[1].name)
+                TriggerClientEvent("vorp_weapons:givecomp", _source, components, result[1].id, weaponHash)
             end
         end)
     end
