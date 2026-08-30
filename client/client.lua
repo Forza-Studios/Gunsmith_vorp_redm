@@ -29,6 +29,27 @@ local blips = {}
 local currentFocusedComponent = nil
 local lastFocusedComponent = nil
 
+local function RemoveWeaponComponentFromPed(ped, componentHash, weaponHash)
+	return Citizen.InvokeNative(0x19F70C4D80494FF8, ped, componentHash, weaponHash)
+end
+
+local function GiveWeaponComponentToEntity(entity, componentHash, weaponHash, p3)
+	return Citizen.InvokeNative(0x74C9090FDD1BB48E, entity, componentHash, weaponHash, p3)
+end
+
+local function LoadModel(model)
+	if not IsModelInCdimage(model) then
+		return false
+	end
+	if not HasModelLoaded(model) then
+		RequestModel(model, false)
+		while not HasModelLoaded(model) do
+			Wait(0)
+		end
+	end
+	return true
+end
+
 local function RebuildWeaponPreview(tempComponent)
 	if not wepobject or not DoesEntityExist(wepobject) then return end
 
@@ -160,26 +181,7 @@ end
 
 local Core = exports.vorp_core:GetCore()
 
-local function RemoveWeaponComponentFromPed(ped, componentHash, weaponHash)
-	return Citizen.InvokeNative(0x19F70C4D80494FF8, ped, componentHash, weaponHash)
-end
 
-local function GiveWeaponComponentToEntity(entity, componentHash, weaponHash, p3)
-	return Citizen.InvokeNative(0x74C9090FDD1BB48E, entity, componentHash, weaponHash, p3)
-end
-
-local function LoadModel(model)
-	if not IsModelInCdimage(model) then
-		return false
-	end
-	if not HasModelLoaded(model) then
-		RequestModel(model, false)
-		while not HasModelLoaded(model) do
-			Wait(0)
-		end
-	end
-	return true
-end
 
 local function makeEntityFaceEntity(entity)
 	local p2 = GetEntityCoords(entity, true)
