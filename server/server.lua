@@ -263,6 +263,7 @@ AddEventHandler("playerDropped", function()
     end
 end)
 
+
 RegisterServerEvent("coi_gunsmith:server:requestActiveWeapon", function()
     local _source = source
     local Character = Core.getUser(_source).getUsedCharacter
@@ -271,8 +272,7 @@ RegisterServerEvent("coi_gunsmith:server:requestActiveWeapon", function()
         MySQL.query('SELECT id, name, comps FROM loadout WHERE charidentifier = @charid AND used2 = 1', { charid = charid }, function(result)
             if result and result[1] then
                 local components = json.decode(result[1].comps) or {}
-                local weaponHash = GetHashKey(result[1].name)
-                TriggerClientEvent("vorp_weapons:givecomp", _source, components, result[1].id, weaponHash)
+                TriggerClientEvent("vorp_weapons:givecomp", _source, components, result[1].id, result[1].name)
             end
         end)
     end
