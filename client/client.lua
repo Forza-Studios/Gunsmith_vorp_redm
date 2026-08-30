@@ -8,6 +8,9 @@ local comps = {}
 local sum = 0
 local wepobject
 local createdobject = false
+local previewCoords = nil
+local nearbyPreviews = {}
+local activePreviewsData = {}
 local h
 local roll
 local pricing = {}
@@ -202,6 +205,34 @@ AddEventHandler("onResourceStart", function(resourceName)
 end
 )
 
+local function copy_components(t)
+	local res = {}
+	if t then
+		for i = 1, #t do
+			res[i] = { name = t[i].name, model = t[i].model }
+		end
+	end
+	return res
+end
+
+local function table_equal(t1, t2)
+	if not t1 or not t2 then return false end
+	if #t1 ~= #t2 then return false end
+	local matched = {}
+	for i = 1, #t1 do
+		local found = false
+		for j = 1, #t2 do
+			if not matched[j] and t1[i].name == t2[j].name then
+				matched[j] = true
+				found = true
+				break
+			end
+		end
+		if not found then return false end
+	end
+	return true
+end
+
 local function contains(table, element, element2)
 	for k, v in pairs(table) do
 		if v.comp == element and v.type == element2 then
@@ -357,6 +388,11 @@ AddEventHandler("onResourceStop", function(resourceName)
 		if createdobject then
 			DeleteEntity(wepobject)
 		end
+		for ownerId, preview in pairs(nearbyPreviews) do
+			if preview and DoesEntityExist(preview.entity) then
+				DeleteEntity(preview.entity)
+			end
+		end
 	end
 end
 )
@@ -375,6 +411,7 @@ end
 
 local function createobject(x, y, z, objecthash)
 	if not createdobject then
+		previewCoords = {x = x, y = y, z = z}
 		wepobject = Citizen.InvokeNative(0x9888652B8BA77F73, objecthash, 0, x, y, z, true, 1.0)
 		h = GetEntityHeading(wepobject)
 		local tabley = GetEntityRotation(wepobject, 1)
@@ -397,12 +434,25 @@ local function createobject(x, y, z, objecthash)
 	end
 end
 
+local wasCreated = false
+local lastSyncedH = nil
+local lastSyncedRoll = nil
+local lastSyncedAdded = {}
+
 Citizen.CreateThread(function()
 	repeat Wait(1000) until LocalPlayer.state.IsInSession
 	while true do
 		local sleep = 1000
 		if createdobject then
 			sleep = 0
+			if not wasCreated then
+				wasCreated = true
+				lastSyncedH = h
+				lastSyncedRoll = roll
+				lastSyncedAdded = copy_components(added)
+				TriggerServerEvent("coi_gunsmith:server:startPreview", globalhash, previewCoords, h, roll, added)
+			end
+
 			drawtext(Config.Language.rotateitem1, 0.25, 0.74, 0.3, 0.2, true, 255, 255, 255, 255, true)
 			drawtext(Config.Language.rotateitem2, 0.25, 0.76, 0.3, 0.2, true, 255, 255, 255, 255, true)
 			drawtext(Config.Language.rotateitem3, 0.25, 0.78, 0.3, 0.2, true, 255, 255, 255, 255, true)
@@ -424,6 +474,18 @@ Citizen.CreateThread(function()
 			if whenKeyJustPressed(Config.General.keys["4"]) then
 				roll = roll + 20
 				SetEntityRotation(wepobject, roll % 360, 0, h % 360, 1, true)
+			end
+
+			if h ~= lastSyncedH or roll ~= lastSyncedRoll or not table_equal(added, lastSyncedAdded) then
+				lastSyncedH = h
+				lastSyncedRoll = roll
+				lastSyncedAdded = copy_components(added)
+				TriggerServerEvent("coi_gunsmith:server:updatePreview", h, roll, added)
+			end
+		else
+			if wasCreated then
+				wasCreated = false
+				TriggerServerEvent("coi_gunsmith:server:stopPreview")
 			end
 		end
 		Wait(sleep)
@@ -2633,4 +2695,112 @@ RegisterNetEvent("vorp_weapons:givecomp", function(components, id, hash)
 			SetModelAsNoLongerNeeded(components[i].model)
 		end
 	end
+end)
+
+RegisterNetEvent("coi_gunsmith:client:syncPreviewStart", function(ownerId, hash, coords, h, roll, components)
+	if ownerId == GetPlayerServerId(PlayerId()) then return end
+	activePreviewsData[ownerId] = {
+		hash = hash,
+		coords = coords,
+		h = h,
+		roll = roll,
+		components = components
+	}
+end)
+
+RegisterNetEvent("coi_gunsmith:client:syncPreviewUpdate", function(ownerId, h, roll, components)
+	if ownerId == GetPlayerServerId(PlayerId()) then return end
+	if activePreviewsData[ownerId] then
+		local oldComponents = activePreviewsData[ownerId].components
+		activePreviewsData[ownerId].h = h
+		activePreviewsData[ownerId].roll = roll
+		activePreviewsData[ownerId].components = components
+
+		local preview = nearbyPreviews[ownerId]
+		if preview and DoesEntityExist(preview.entity) then
+			SetEntityRotation(preview.entity, roll % 360, 0, h % 360, 1, true)
+			if not table_equal(oldComponents, components) then
+				for i = 1, #preview.appliedComponents do
+					RemoveWeaponComponentFromWeaponObject(preview.entity, preview.appliedComponents[i])
+				end
+				local applied = {}
+				for i = 1, #components do
+					if components[i].model ~= 0 then
+						LoadModel(components[i].model)
+					end
+					GiveWeaponComponentToEntity(preview.entity, components[i].name, -1, true)
+					table.insert(applied, components[i].name)
+					if components[i].model ~= 0 then
+						SetModelAsNoLongerNeeded(components[i].model)
+					end
+				end
+				preview.appliedComponents = applied
+			end
+		end
+	end
+end)
+
+RegisterNetEvent("coi_gunsmith:client:syncPreviewStop", function(ownerId)
+	if ownerId == GetPlayerServerId(PlayerId()) then return end
+	activePreviewsData[ownerId] = nil
+	local preview = nearbyPreviews[ownerId]
+	if preview then
+		if DoesEntityExist(preview.entity) then
+			DeleteEntity(preview.entity)
+		end
+		nearbyPreviews[ownerId] = nil
+	end
+end)
+
+RegisterNetEvent("coi_gunsmith:client:receiveActivePreviews", function(previews)
+	for ownerId, data in pairs(previews) do
+		if ownerId ~= GetPlayerServerId(PlayerId()) then
+			activePreviewsData[ownerId] = data
+		end
+	end
+end)
+
+Citizen.CreateThread(function()
+	while true do
+		local ped = PlayerPedId()
+		local playerCoords = GetEntityCoords(ped)
+		for ownerId, data in pairs(activePreviewsData) do
+			local dist = #(playerCoords - vector3(data.coords.x, data.coords.y, data.coords.z))
+			if dist <= 20.0 then
+				if not nearbyPreviews[ownerId] then
+					local entity = Citizen.InvokeNative(0x9888652B8BA77F73, data.hash, 0, data.coords.x, data.coords.y, data.coords.z, true, 1.0)
+					SetEntityRotation(entity, data.roll % 360, 0, data.h % 360, 1, true)
+					FreezeEntityPosition(entity, true)
+					local applied = {}
+					for i = 1, #data.components do
+						if data.components[i].model ~= 0 then
+							LoadModel(data.components[i].model)
+						end
+						GiveWeaponComponentToEntity(entity, data.components[i].name, -1, true)
+						table.insert(applied, data.components[i].name)
+						if data.components[i].model ~= 0 then
+							SetModelAsNoLongerNeeded(data.components[i].model)
+						end
+					end
+					nearbyPreviews[ownerId] = {
+						entity = entity,
+						appliedComponents = applied
+					}
+				end
+			else
+				if nearbyPreviews[ownerId] then
+					if DoesEntityExist(nearbyPreviews[ownerId].entity) then
+						DeleteEntity(nearbyPreviews[ownerId].entity)
+					end
+					nearbyPreviews[ownerId] = nil
+				end
+			end
+		end
+		Wait(1000)
+	end
+end)
+
+Citizen.CreateThread(function()
+	repeat Wait(1000) until LocalPlayer.state.IsInSession
+	TriggerServerEvent("coi_gunsmith:server:requestActivePreviews")
 end)

@@ -217,3 +217,49 @@ RegisterServerEvent("vorp_weapons:itemscheck2", function(label, item, materials,
     SendWebhookMessage(adminwebhook, message)
     subItem()
 end)
+
+local activePreviews = {}
+
+RegisterServerEvent("coi_gunsmith:server:startPreview", function(hash, coords, h, roll, components)
+    local _source = source
+    activePreviews[_source] = {
+        hash = hash,
+        coords = coords,
+        h = h,
+        roll = roll,
+        components = components
+    }
+    TriggerClientEvent("coi_gunsmith:client:syncPreviewStart", -1, _source, hash, coords, h, roll, components)
+end)
+
+RegisterServerEvent("coi_gunsmith:server:updatePreview", function(h, roll, components)
+    local _source = source
+    if activePreviews[_source] then
+        activePreviews[_source].h = h
+        activePreviews[_source].roll = roll
+        activePreviews[_source].components = components
+        TriggerClientEvent("coi_gunsmith:client:syncPreviewUpdate", -1, _source, h, roll, components)
+    end
+end)
+
+RegisterServerEvent("coi_gunsmith:server:stopPreview", function()
+    local _source = source
+    if activePreviews[_source] then
+        activePreviews[_source] = nil
+        TriggerClientEvent("coi_gunsmith:client:syncPreviewStop", -1, _source)
+    end
+end)
+
+RegisterServerEvent("coi_gunsmith:server:requestActivePreviews", function()
+    local _source = source
+    TriggerClientEvent("coi_gunsmith:client:receiveActivePreviews", _source, activePreviews)
+end)
+
+AddEventHandler("playerDropped", function()
+    local _source = source
+    if activePreviews[_source] then
+        activePreviews[_source] = nil
+        TriggerClientEvent("coi_gunsmith:client:syncPreviewStop", -1, _source)
+    end
+end)
+
