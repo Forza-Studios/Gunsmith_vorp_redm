@@ -284,6 +284,9 @@ AddEventHandler("vorp_weapons:applymods", function()
 	createdobject = false
 	FreezeEntityPosition(PlayerPedId(), false)
 	DeleteEntity(wepobject)
+
+	LocalPlayer.state:set("weaponComponents", { hash = globalhash, comps = added }, true)
+
 	added = {}
 	wephash = nil
 	compss = {}
@@ -494,6 +497,7 @@ AddEventHandler("onResourceStop", function(resourceName)
 		for _, b in ipairs(blips) do
 			RemoveBlip(b)
 		end
+		LocalPlayer.state:set("weaponComponents", nil, true)
 		if createdobject then
 			DeleteEntity(wepobject)
 		end
@@ -2817,6 +2821,8 @@ RegisterNetEvent("vorp_weapons:givecomp", function(components, id, hash)
 			SetModelAsNoLongerNeeded(components[i].model)
 		end
 	end
+
+	LocalPlayer.state:set("weaponComponents", { hash = globalhash, comps = added }, true)
 end)
 
 RegisterNetEvent("coi_gunsmith:client:syncPreviewStart", function(ownerId, hash, coords, h, roll, components)
@@ -2925,4 +2931,90 @@ end)
 Citizen.CreateThread(function()
 	repeat Wait(1000) until LocalPlayer.state.IsInSession
 	TriggerServerEvent("coi_gunsmith:server:requestActivePreviews")
+end)
+
+local function getWeaponComponentsByHash(wepHash)
+	if not comps then return nil end
+	for k, v in pairs(comps) do
+		if GetHashKey(k) == wepHash then
+			return v
+		end
+	end
+	return nil
+end
+
+local appliedOtherComponents = {}
+
+Citizen.CreateThread(function()
+	while true do
+		Wait(2000)
+		local players = GetActivePlayers()
+		local localServerId = GetPlayerServerId(PlayerId())
+
+		for i = 1, #players do
+			local playerServerId = GetPlayerServerId(players[i])
+			if playerServerId ~= localServerId then
+				local playerPed = GetPlayerPed(players[i])
+				if DoesEntityExist(playerPed) then
+					local state = Player(playerServerId).state.weaponComponents
+					local _, currentWepHash = GetCurrentPedWeapon(playerPed, true, 0, true)
+
+					if state and currentWepHash ~= 0 and currentWepHash == state.hash then
+						-- Check if we already applied these components
+						local alreadyApplied = false
+						if appliedOtherComponents[playerServerId] and appliedOtherComponents[playerServerId].hash == state.hash then
+							if table_equal(appliedOtherComponents[playerServerId].comps, state.comps) then
+								alreadyApplied = true
+							end
+						end
+
+						if not alreadyApplied then
+							-- Remove all components of this weapon type first
+							local weaponComps = getWeaponComponentsByHash(state.hash)
+							if weaponComps then
+								for _, v in pairs(weaponComps) do
+									RemoveWeaponComponentFromPed(playerPed, v.name, state.hash)
+								end
+							end
+
+							-- Apply the new components
+							for j = 1, #state.comps do
+								if state.comps[j].model ~= 0 then
+									LoadModel(state.comps[j].model)
+								end
+								GiveWeaponComponentToEntity(playerPed, state.comps[j].name, state.hash, true)
+								if state.comps[j].model ~= 0 then
+									SetModelAsNoLongerNeeded(state.comps[j].model)
+								end
+							end
+
+							appliedOtherComponents[playerServerId] = {
+								hash = state.hash,
+								comps = copy_components(state.comps)
+							}
+						end
+					else
+						-- The player is not holding the weapon or has no state bag
+						if appliedOtherComponents[playerServerId] then
+							appliedOtherComponents[playerServerId] = nil
+						end
+					end
+				end
+			end
+		end
+
+		-- Clean up players that are no longer active
+		for id, _ in pairs(appliedOtherComponents) do
+			local stillActive = false
+			for i = 1, #players do
+				if GetPlayerServerId(players[i]) == id then
+					stillActive = true
+					break
+				end
+			end
+			if not stillActive then
+				appliedOtherComponents[id] = nil
+			end
+		end
+	end
 end)
