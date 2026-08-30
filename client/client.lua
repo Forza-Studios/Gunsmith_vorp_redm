@@ -24,7 +24,36 @@ local cal = false
 local modelz = false
 local next = next
 local OpenStores
-local blip
+local blips = {}
+
+local function createBlips()
+	for _, b in ipairs(blips) do
+		RemoveBlip(b)
+	end
+	blips = {}
+
+	if Config.General.Blips and Config.General.Blips.Enable then
+		for k, v in pairs(Config.General.customizationLocations) do
+			local blip = nil
+			if BlipAddForCoords then
+				blip = BlipAddForCoords(1664425300, v.Pos.x, v.Pos.y, v.Pos.z)
+			else
+				blip = Citizen.InvokeNative(0x554D9D53F696D002, 1664425300, v.Pos.x, v.Pos.y, v.Pos.z)
+			end
+
+			if blip and blip ~= 0 then
+				SetBlipSprite(blip, Config.General.Blips.Sprite, true)
+				if SetBlipName then
+					SetBlipName(blip, Config.General.Blips.Name)
+				else
+					Citizen.InvokeNative(0x9CB1A1623062F402, blip, Config.General.Blips.Name)
+				end
+				table.insert(blips, blip)
+			end
+		end
+	end
+end
+
 local OpenGroup = GetRandomIntInRange(0, 0xffffff)
 
 local progressbar
@@ -338,6 +367,7 @@ AddEventHandler("vorp_weapons:initalizing", function()
 			end
 		end
 	end
+	createBlips()
 end)
 
 function GetClosestPlayer()
@@ -384,7 +414,9 @@ end
 AddEventHandler("onResourceStop", function(resourceName)
 	if GetCurrentResourceName() == resourceName then
 		FreezeEntityPosition(PlayerPedId(), false)
-		RemoveBlip(blip)
+		for _, b in ipairs(blips) do
+			RemoveBlip(b)
+		end
 		if createdobject then
 			DeleteEntity(wepobject)
 		end

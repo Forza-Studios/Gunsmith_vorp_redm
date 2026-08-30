@@ -17,6 +17,13 @@ Config.General = {
     updatedinventoryammo = true, -- use if using updated inventory with new ammo system
 
 
+    Blips = {
+        Enable = true,
+        Sprite = -145868367,
+        Name = "Gunsmith",
+    },
+
+
     jobonly = false, -- only players with mentioned jobs below can access crafting/customization station
 
     job = { "gunsmith", "rguns" },
