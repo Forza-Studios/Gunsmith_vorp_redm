@@ -19,7 +19,7 @@ Config.General = {
 
     Blips = {
         Enable = true,
-        Sprite = -145868367,
+        Sprite = -758970771,
         Name = "Gunsmith",
     },
 
